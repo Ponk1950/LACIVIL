@@ -588,6 +588,16 @@ tr:hover td { background: #fafaf7; }
       </div>
       <button class="btn" onclick="saveSettings()">Save Settings</button>
       <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--line)">
+        <div style="margin-bottom:.6rem"><strong>AI API Key</strong></div>
+        <div style="font-size:.82em;color:var(--muted);margin-bottom:.5rem">Stored in your browser only. Used for the Help → Ask a Question feature.</div>
+        <div class="form-group">
+          <label>Anthropic API Key</label>
+          <input type="password" id="settings-apikey" placeholder="sk-ant-...">
+        </div>
+        <button class="btn small" onclick="saveApiKeyFromSettings()">Save Key</button>
+        <span id="apikey-status" style="margin-left:.5rem;font-size:.82em;color:var(--muted)"></span>
+      </div>
+      <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--line)">
         <div style="margin-bottom:.6rem"><strong>Data</strong></div>
         <button class="btn ghost small" onclick="showExportHelpReports()">📤 Export Help Reports</button>
         <button class="btn ghost small" style="color:var(--bad);margin-left:.4rem" onclick="clearAllData()">🗑 Clear All Data</button>
@@ -814,6 +824,12 @@ function showHelpAsk(){
   askBtn.onclick=async function(){
     const q=(inp.value||'').trim();
     if(!q){_toast('Type a question first');return;}
+    // Check for API key
+    if(!window.ANTHROPIC_KEY){
+      bg.remove();
+      promptApiKey();
+      return;
+    }
     out.style.display='none';errEl.style.display='none';out.innerHTML='';
     const hits=KB.length?searchKB(q):[];
     if(hits.length){
@@ -839,13 +855,31 @@ function showHelpAsk(){
 
 async function askAI(question,container,errEl){
   try{
-    const r=await fetch(AI_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({question,systemPrompt:CFG.aiSystemPrompt||'You are a helpful assistant.'})});
-    if(!r.ok){let msg='Server returned '+r.status;if(r.status===404)msg='AI service not deployed yet ('+AI_ENDPOINT+')';throw new Error(msg);}
+    // Call Anthropic API directly from browser
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': window.ANTHROPIC_KEY || '',
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-allow-browser':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:1024,
+        system: CFG.aiSystemPrompt||'You are a helpful assistant.',
+        messages:[{role:'user',content:question}]
+      })
+    });
+    if(!r.ok){
+      const err=await r.json().catch(()=>({}));
+      throw new Error(err.error&&err.error.message?err.error.message:'API error '+r.status);
+    }
     const data=await r.json();
+    const answer=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
     const card=_el('div',{style:{padding:'.7rem',background:'#eef5ee',borderRadius:'8px',border:'1px solid var(--green)',fontSize:'.92em',lineHeight:'1.45',whiteSpace:'pre-wrap'}});
     card.appendChild(_el('div',{style:{fontSize:'.78em',color:'var(--muted)',marginBottom:'.3rem',fontStyle:'italic'}},CFG.aiDisclaimer||'AI-generated.'));
-    card.appendChild(document.createTextNode((data.answer||'(no answer)').trim()));
+    card.appendChild(document.createTextNode((answer||'(no answer)')));
     container.appendChild(card);
   }catch(e){errEl.textContent='AI error: '+(e.message||e);errEl.style.display='block';}
 }
@@ -1400,6 +1434,16 @@ function updateHelpBadge() {
 }
 
 // ── Settings ────────────────────────────────────────────────────────────
+function saveApiKeyFromSettings() {
+  const key = (document.getElementById('settings-apikey').value || '').trim();
+  if (!key) { document.getElementById('apikey-status').textContent = 'Enter a key first.'; return; }
+  if (!key.startsWith('sk-')) { document.getElementById('apikey-status').textContent = 'Key should start with sk-'; return; }
+  saveApiKey(key);
+  document.getElementById('settings-apikey').value = '';
+  document.getElementById('apikey-status').textContent = '✓ Saved';
+  toast('API key saved.');
+}
+
 function loadSettings() {
   const s = DB.settings();
   document.getElementById('settings-name').value = s.name || '';
@@ -1408,6 +1452,9 @@ function loadSettings() {
   document.getElementById('userName').textContent = s.name || 'Clerk';
   const initials = (s.name || 'CK').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
   document.getElementById('avatarInitials').textContent = initials;
+  // Show API key status
+  const keyStatus = document.getElementById('apikey-status');
+  if (keyStatus) keyStatus.textContent = loadApiKey() ? '✓ Key is set' : 'No key set';
 }
 
 function saveSettings() {
@@ -1437,6 +1484,43 @@ document.addEventListener('DOMContentLoaded', () => {
   const dateEl = document.getElementById('s-date');
   if (dateEl) dateEl.value = new Date().toISOString().slice(0,10);
 });
+
+// ── API Key management ─────────────────────────────────────────────────
+function loadApiKey() {
+  return localStorage.getItem('mc:apikey') || '';
+}
+function saveApiKey(key) {
+  localStorage.setItem('mc:apikey', key);
+  window.ANTHROPIC_KEY = key;
+}
+window.ANTHROPIC_KEY = loadApiKey();
+
+function promptApiKey() {
+  if (window.ANTHROPIC_KEY) return;
+  const bg = el('div', {class:'modal-bg'});
+  const m = el('div', {class:'modal', style:{maxWidth:'480px'}});
+  m.appendChild(el('h3', {style:{marginBottom:'.5rem',fontFamily:"'DM Serif Display',serif",fontWeight:400}}, '🔑 API Key Required'));
+  m.appendChild(el('p', {style:{marginBottom:'1rem',fontSize:'.9em',color:'var(--muted)'}},
+    'The Ask a Question feature needs your Anthropic API key. It is stored only in your browser — never sent anywhere except directly to Anthropic.'));
+  const inp = el('input', {type:'password', placeholder:'sk-ant-...',
+    style:{width:'100%',padding:'.5rem .7rem',border:'1px solid var(--line)',borderRadius:'7px',
+    fontSize:'.95em',fontFamily:'inherit',marginBottom:'.8rem'}});
+  m.appendChild(inp);
+  m.appendChild(el('p', {style:{fontSize:'.78em',color:'var(--muted)',marginBottom:'1rem'}},
+    'Get your key at console.anthropic.com → API Keys. You can also set it later in Settings.'));
+  const btnRow = el('div', {class:'btn-row'});
+  btnRow.appendChild(el('button', {class:'btn', onclick: () => {
+    const key = inp.value.trim();
+    if (!key.startsWith('sk-')) { inp.style.borderColor='var(--bad)'; return; }
+    saveApiKey(key);
+    bg.remove();
+    toast('API key saved.');
+  }}, 'Save Key'));
+  btnRow.appendChild(el('button', {class:'btn ghost', onclick: () => bg.remove()}, 'Skip for now'));
+  m.appendChild(btnRow);
+  bg.appendChild(m); document.body.appendChild(bg);
+  setTimeout(() => inp.focus(), 50);
+}
 
 // ── Boot ───────────────────────────────────────────────────────────────
 (function boot() {
