@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetaCourt — Court Filing System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Variables ─────────────────────────────────────────────── */
+:root {
+  --ink:    #1a1a2e;
+  --muted:  #7a7a94;
+  --bad:    #c0392b;
+  --green:  #1a6b4a;
+  --cream:  #f7f5ef;
+  --line:   #e0ddd5;
+  --gold:   #b8960c;
+  --bg:     #f4f2ec;
+  --white:  #ffffff;
+  --navy:   #1a1a2e;
+  --seal:   #2c3e6b;
+  --accent: #1a6b4a;
+  --sidebar-w: 240px;
+  --topbar-h: 56px;
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ── Topbar ────────────────────────────────────────────────── */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--topbar-h);
+  background: var(--navy);
+  display: flex; align-items: center;
+  padding: 0 1.2rem 0 1rem;
+  z-index: 200;
+  border-bottom: 2px solid var(--gold);
+  gap: .8rem;
+}
+#topbar .logo {
+  font-family: 'DM Serif Display', serif;
+  color: var(--white);
+  font-size: 1.2rem;
+  letter-spacing: .01em;
+  display: flex; align-items: center; gap: .5rem;
+  text-decoration: none;
+}
+#topbar .logo .seal { color: var(--gold); font-size: 1.35rem; }
+#topbar .spacer { flex: 1; }
+#topbar .user-chip {
+  display: flex; align-items: center; gap: .45rem;
+  color: rgba(255,255,255,.75); font-size: .85em;
+}
+#topbar .user-chip .avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--seal);
+  border: 1.5px solid var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 600; color: var(--gold);
+}
+.topbar-btn {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.2);
+  color: white;
+  border-radius: 6px;
+  padding: .3rem .7rem;
+  cursor: pointer;
+  font-size: .82em;
+  font-family: inherit;
+  display: flex; align-items: center; gap: .35rem;
+  transition: background .15s;
+}
+.topbar-btn:hover { background: rgba(255,255,255,.18); }
+.topbar-btn.help-btn { border-color: rgba(184,150,12,.5); color: #e8c84a; }
+
+/* ── Sidebar ───────────────────────────────────────────────── */
+#sidebar {
+  position: fixed; top: var(--topbar-h); left: 0;
+  width: var(--sidebar-w);
+  height: calc(100vh - var(--topbar-h));
+  background: var(--white);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  z-index: 100;
+  padding: 1rem 0;
+  overflow-y: auto;
+}
+.nav-section { padding: 0 .75rem .75rem; }
+.nav-label {
+  font-size: .72em; font-weight: 600;
+  color: var(--muted); letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: .5rem .6rem .25rem;
+}
+.nav-item {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem .6rem;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: .92em;
+  color: var(--ink);
+  transition: background .12s, color .12s;
+  border: none; background: none; width: 100%;
+  text-align: left; font-family: inherit;
+}
+.nav-item:hover { background: var(--bg); }
+.nav-item.active { background: #e8f4ee; color: var(--green); font-weight: 600; }
+.nav-item .icon { font-size: 1.05rem; width: 20px; text-align: center; }
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--green); color: white;
+  font-size: .7em; font-weight: 700;
+  padding: .1rem .45rem;
+  border-radius: 99px;
+}
+
+/* ── Main content ──────────────────────────────────────────── */
+#main {
+  margin-left: var(--sidebar-w);
+  margin-top: var(--topbar-h);
+  min-height: calc(100vh - var(--topbar-h));
+  padding: 1.8rem 2rem;
+}
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── Page headers ──────────────────────────────────────────── */
+.page-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+}
+.page-header h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.75rem; font-weight: 400;
+  color: var(--navy); line-height: 1.2;
+}
+.page-header .subtitle { color: var(--muted); font-size: .9em; margin-top: .2rem; }
+
+/* ── Cards & layout ────────────────────────────────────────── */
+.card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.1rem 1.2rem;
+}
+.card + .card { margin-top: .75rem; }
+.empty { color: var(--muted); font-style: italic; text-align: center; padding: 2rem; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+
+/* ── Stat cards ────────────────────────────────────────────── */
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.1rem 1.3rem;
+}
+.stat-card .stat-label { font-size: .8em; color: var(--muted); font-weight: 500; margin-bottom: .3rem; }
+.stat-card .stat-value {
+  font-family: 'DM Serif Display', serif;
+  font-size: 2.2rem; color: var(--navy); line-height: 1;
+}
+.stat-card .stat-note { font-size: .78em; color: var(--muted); margin-top: .3rem; }
+.stat-card.accent { border-color: var(--green); }
+.stat-card.accent .stat-value { color: var(--green); }
+
+/* ── Tables ────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .9em; }
+th {
+  text-align: left; padding: .6rem .8rem;
+  font-size: .75em; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .05em;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+td { padding: .65rem .8rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafaf7; }
+.case-no { font-family: monospace; font-size: .88em; color: var(--seal); font-weight: 600; }
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn {
+  background: var(--green); color: white;
+  border: none; border-radius: 7px;
+  padding: .5rem 1rem;
+  cursor: pointer; font-size: .92em;
+  font-family: inherit; font-weight: 500;
+  transition: background .15s;
+}
+.btn:hover { background: #155c3e; }
+.btn.small { padding: .28rem .6rem; font-size: .82em; }
+.btn.ghost {
+  background: transparent; color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn.ghost:hover { background: var(--bg); }
+.btn.full { width: 100%; }
+.btn.secondary { background: #eee; color: var(--ink); }
+.btn.secondary:hover { background: #e0e0e0; }
+.btn.danger { background: var(--bad); }
+.btn-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+.row.between { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+
+/* ── Pills/badges ──────────────────────────────────────────── */
+.pill {
+  display: inline-block; padding: .15rem .55rem;
+  border-radius: 99px; font-size: .76em; font-weight: 600;
+  background: #eee; color: var(--ink);
+}
+.pill.warn  { background: #fff3cd; color: #856404; }
+.pill.good  { background: #d1e7dd; color: #0f5132; }
+.pill.info  { background: #cfe2ff; color: #084298; }
+.pill.muted { background: #f0f0f0; color: var(--muted); }
+
+/* ── Forms ─────────────────────────────────────────────────── */
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-weight: 500; margin-bottom: .35rem; font-size: .9em; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: .5rem .7rem;
+  border: 1px solid var(--line); border-radius: 7px;
+  font-size: .95em; font-family: inherit;
+  background: white; color: var(--ink);
+  transition: border-color .15s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(26,107,74,.1);
+}
+
+/* ── Modal ─────────────────────────────────────────────────── */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(26,26,46,.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 1rem;
+}
+.modal {
+  background: var(--white);
+  border-radius: 12px; padding: 1.4rem 1.5rem;
+  max-width: 520px; width: 100%;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0,0,0,.22);
+}
+.modal h3 { font-family: 'DM Serif Display', serif; font-weight: 400; font-size: 1.3rem; }
+
+/* ── Tabs ──────────────────────────────────────────────────── */
+.tab-bar { display: flex; gap: .3rem; border-bottom: 2px solid var(--line); margin-bottom: 1rem; }
+.tab {
+  background: transparent; border: 0;
+  padding: .5rem 1rem; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: .92em; font-family: inherit; color: var(--muted);
+}
+.tab.active { border-bottom-color: var(--green); color: var(--ink); font-weight: 600; }
+
+/* ── Toast ─────────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+  background: var(--navy); color: white;
+  padding: .6rem 1.2rem; border-radius: 99px;
+  font-size: .88em; font-weight: 500;
+  z-index: 2000; opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; }
+
+/* ── Dashboard widgets ─────────────────────────────────────── */
+.activity-item {
+  display: flex; align-items: flex-start; gap: .8rem;
+  padding: .65rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  margin-top: .45rem; flex-shrink: 0;
+}
+.activity-dot.green { background: var(--green); }
+.activity-dot.gold { background: var(--gold); }
+.activity-dot.red { background: var(--bad); }
+.activity-text { flex: 1; font-size: .9em; line-height: 1.4; }
+.activity-time { font-size: .78em; color: var(--muted); white-space: nowrap; }
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
+  #sidebar { display: none; }
+  #main { padding: 1rem; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Topbar ──────────────────────────────────────────────────────────── -->
+<div id="topbar">
+  <a class="logo" href="#" onclick="navigate('dashboard'); return false;">
+    <span class="seal">⚖</span>
+    MetaCourt
+  </a>
+  <div class="spacer"></div>
+  <button class="topbar-btn help-btn" onclick="showHelp()" title="Help, report a bug, or request a feature">
+    ❓ Help
+  </button>
+  <div class="user-chip">
+    <div class="avatar" id="avatarInitials">CK</div>
+    <span id="userName">Clerk</span>
+  </div>
+</div>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<div id="sidebar">
+  <div class="nav-section">
+    <div class="nav-label">Main</div>
+    <button class="nav-item active" id="nav-dashboard" onclick="navigate('dashboard')">
+      <span class="icon">🏛</span> Dashboard
+    </button>
+    <button class="nav-item" id="nav-cases" onclick="navigate('cases')">
+      <span class="icon">📁</span> Cases
+      <span class="badge" id="badge-cases">0</span>
+    </button>
+    <button class="nav-item" id="nav-filings" onclick="navigate('filings')">
+      <span class="icon">📄</span> New Filing
+    </button>
+    <button class="nav-item" id="nav-service" onclick="navigate('service')">
+      <span class="icon">📬</span> Service Returns
+    </button>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Admin</div>
+    <button class="nav-item" id="nav-helpqueue" onclick="navigate('helpqueue')">
+      <span class="icon">❓</span> Help Queue
+      <span class="badge" id="badge-help" style="display:none">0</span>
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="navigate('settings')">
+      <span class="icon">⚙</span> Settings
+    </button>
+  </div>
+</div>
+
+<!-- ── Main ─────────────────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- Dashboard -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <div>
+        <h1>Dashboard</h1>
+        <div class="subtitle">Court Filing System — <span id="dashDate"></span></div>
+      </div>
+      <button class="btn" onclick="navigate('filings')">+ New Filing</button>
+    </div>
+
+    <div class="grid-3" style="margin-bottom:1.2rem">
+      <div class="stat-card">
+        <div class="stat-label">Active Cases</div>
+        <div class="stat-value" id="stat-active">0</div>
+        <div class="stat-note">Open filings</div>
+      </div>
+      <div class="stat-card accent">
+        <div class="stat-label">Filings This Month</div>
+        <div class="stat-value" id="stat-month">0</div>
+        <div class="stat-note">New cases</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending Service</div>
+        <div class="stat-value" id="stat-service">0</div>
+        <div class="stat-note">Awaiting return</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="row between" style="margin-bottom:.8rem">
+          <strong>Recent Activity</strong>
+          <button class="btn ghost small" onclick="navigate('cases')">View all</button>
+        </div>
+        <div id="recent-activity">
+          <div class="empty">No activity yet. File your first case.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="margin-bottom:.8rem"><strong>Quick Actions</strong></div>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          <button class="btn full" onclick="navigate('filings')">📄 File New Petition</button>
+          <button class="btn secondary full" onclick="navigate('service')">📬 Log Service Return</button>
+          <button class="btn ghost full" onclick="showHelp()">❓ Need Help?</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cases -->
+  <div class="page" id="page-cases">
+    <div class="page-header">
+      <div>
+        <h1>Cases</h1>
+        <div class="subtitle">All active and closed cases</div>
+      </div>
+      <button class="btn" onclick="navigate('filings')">+ New Filing</button>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:.6rem;margin-bottom:1rem;align-items:center">
+        <input type="text" id="case-search" placeholder="Search by case no., party name…"
+          style="flex:1;padding:.45rem .7rem;border:1px solid var(--line);border-radius:7px;font-size:.9em;font-family:inherit"
+          oninput="renderCaseTable()">
+        <select id="case-status-filter" onchange="renderCaseTable()"
+          style="padding:.45rem .7rem;border:1px solid var(--line);border-radius:7px;font-size:.9em;font-family:inherit">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="served">Served</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Case No.</th>
+              <th>Type</th>
+              <th>Plaintiff</th>
+              <th>Defendant</th>
+              <th>Filed</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="case-tbody">
+            <tr><td colspan="7" class="empty">No cases yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Filing -->
+  <div class="page" id="page-filings">
+    <div class="page-header">
+      <div>
+        <h1>New Filing</h1>
+        <div class="subtitle">Create a new court case filing</div>
+      </div>
+    </div>
+    <div class="card" style="max-width:640px">
+      <div class="form-group">
+        <label>Case Type</label>
+        <select id="f-type">
+          <option value="">Select case type…</option>
+          <option value="eviction">Eviction / Rule for Possession</option>
+          <option value="smallclaims">Small Claims</option>
+          <option value="injunction">Injunction</option>
+          <option value="contempt">Rule for Contempt</option>
+          <option value="other">Other Civil</option>
+        </select>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Plaintiff Name</label>
+          <input type="text" id="f-plaintiff" placeholder="Full legal name or entity">
+        </div>
+        <div class="form-group">
+          <label>Plaintiff Address</label>
+          <input type="text" id="f-plaintiff-addr" placeholder="Street, City, State ZIP">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Defendant Name</label>
+          <input type="text" id="f-defendant" placeholder="Full legal name">
+        </div>
+        <div class="form-group">
+          <label>Defendant Address</label>
+          <input type="text" id="f-defendant-addr" placeholder="Street, City, State ZIP">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Brief Description</label>
+        <textarea id="f-desc" rows="3" placeholder="Briefly describe the nature of the claim…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Amount in Dispute (if applicable)</label>
+        <input type="text" id="f-amount" placeholder="e.g. $2,500.00">
+      </div>
+      <div id="filing-error" style="display:none;padding:.5rem;background:#fde8e8;border-radius:7px;color:var(--bad);font-size:.88em;margin-bottom:.8rem"></div>
+      <div class="btn-row">
+        <button class="btn" onclick="submitFiling()">Submit Filing</button>
+        <button class="btn ghost" onclick="navigate('dashboard')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Service Returns -->
+  <div class="page" id="page-service">
+    <div class="page-header">
+      <div>
+        <h1>Service Returns</h1>
+        <div class="subtitle">Log process service completions</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div style="margin-bottom:.8rem"><strong>Log Service Return</strong></div>
+        <div class="form-group">
+          <label>Case Number</label>
+          <input type="text" id="s-caseno" placeholder="e.g. 2026-CV-00123"
+            oninput="autofillCaseFromService()">
+        </div>
+        <div id="s-case-preview" style="display:none;padding:.5rem .7rem;background:var(--cream);border-radius:7px;font-size:.85em;margin-bottom:.8rem;border:1px solid var(--line)"></div>
+        <div class="form-group">
+          <label>Served To</label>
+          <input type="text" id="s-served-to" placeholder="Name of person served">
+        </div>
+        <div class="form-group">
+          <label>Service Method</label>
+          <select id="s-method">
+            <option value="personal">Personal Service</option>
+            <option value="domiciliary">Domiciliary Service</option>
+            <option value="long-arm">Long-Arm (Art. 1261)</option>
+            <option value="secretary">Secretary of State</option>
+            <option value="posting">Posting (per court order)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date Served</label>
+          <input type="date" id="s-date">
+        </div>
+        <div class="form-group">
+          <label>Deputy / Process Server</label>
+          <input type="text" id="s-server" placeholder="Name and badge/ID">
+        </div>
+        <div id="service-error" style="display:none;padding:.5rem;background:#fde8e8;border-radius:7px;color:var(--bad);font-size:.88em;margin-bottom:.8rem"></div>
+        <div class="btn-row">
+          <button class="btn" onclick="submitServiceReturn()">Log Return</button>
+          <button class="btn ghost" onclick="clearServiceForm()">Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <div style="margin-bottom:.8rem"><strong>Pending Service</strong></div>
+        <div id="pending-service-list">
+          <div class="empty">No cases pending service.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Queue (rendered by help-mini.js) -->
+  <div class="page" id="page-helpqueue">
+    <div id="helpqueue-mount"></div>
+  </div>
+
+  <!-- Settings -->
+  <div class="page" id="page-settings">
+    <div class="page-header">
+      <div><h1>Settings</h1><div class="subtitle">Application configuration</div></div>
+    </div>
+    <div class="card" style="max-width:480px">
+      <div style="margin-bottom:1rem"><strong>Current User</strong></div>
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="settings-name" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label>Cell Number</label>
+        <input type="tel" id="settings-phone" placeholder="(318) 555-1234">
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="settings-role">
+          <option value="clerk">Court Clerk</option>
+          <option value="admin">Admin / Marshal</option>
+          <option value="deputy">Deputy</option>
+        </select>
+      </div>
+      <button class="btn" onclick="saveSettings()">Save Settings</button>
+      <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--line)">
+        <div style="margin-bottom:.6rem"><strong>Data</strong></div>
+        <button class="btn ghost small" onclick="showExportHelpReports()">📤 Export Help Reports</button>
+        <button class="btn ghost small" style="color:var(--bad);margin-left:.4rem" onclick="clearAllData()">🗑 Clear All Data</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ── Toast ──────────────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ─────────────────────────────────────────────────────────────────────
+     APP CONFIG & HELP_CONFIG
+──────────────────────────────────────────────────────────────────────── -->
+<script>
+// ── App constants ──────────────────────────────────────────────────────
+const APP_BUILD = 'v2026-05-20-courts-r1';
+
+// ── State ──────────────────────────────────────────────────────────────
+const State = {
+  page: 'dashboard',
+  user: { id: 'u-clerk', name: 'Court Clerk', phone: '' }
+};
+
+// ── localStorage helpers ───────────────────────────────────────────────
+function load(k, def) {
+  try { const v = localStorage.getItem(k); return v == null ? def : JSON.parse(v); }
+  catch(e) { return def; }
+}
+function save(k, v) {
+  try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) {}
+}
+
+// ── DB ─────────────────────────────────────────────────────────────────
+const DB = {
+  cases:    () => load('mc:cases', []),
+  setCases: (v) => save('mc:cases', v),
+  serviceReturns:    () => load('mc:service', []),
+  setServiceReturns: (v) => save('mc:service', v),
+  settings: () => load('mc:settings', {name:'Court Clerk', phone:'', role:'clerk'})
+};
+
+// ── uid ────────────────────────────────────────────────────────────────
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+// ── toast ──────────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── DOM builder ────────────────────────────────────────────────────────
+function el(tag, attrs) {
+  const node = document.createElement(tag);
+  const kids = Array.prototype.slice.call(arguments, 2);
+  if (attrs) {
+    for (const k in attrs) {
+      if (k === 'onclick') node.onclick = attrs[k];
+      else if (k === 'for') node.setAttribute('for', attrs[k]);
+      else if (k === 'style' && typeof attrs[k] === 'object') Object.assign(node.style, attrs[k]);
+      else node.setAttribute(k, attrs[k]);
+    }
+  }
+  kids.forEach(function(kid) {
+    if (kid == null) return;
+    if (typeof kid === 'string') node.appendChild(document.createTextNode(kid));
+    else node.appendChild(kid);
+  });
+  return node;
+}
+
+// ── HELP_CONFIG (LA Court Filing System) ──────────────────────────────
+const HELP_CONFIG = {
+  appId:    'la-ccp-court-bugs',
+  appName:  'MetaCourt — Court Filing System',
+  appBuild: APP_BUILD,
+  askPlaceholder: 'e.g. "How do I serve a non-resident defendant?"',
+  kb: [],  // Start empty; promote common AI answers to KB articles as patterns emerge
+
+  aiSystemPrompt:
+    'You are an expert on the Louisiana Code of Civil Procedure (LA CCP). ' +
+    'When the user asks a procedural-law question, cite the specific LA CCP ' +
+    'article number(s) (e.g. "Art. 1201") and give a plain-language explanation. ' +
+    'Note any 2024 or 2025 amendments where relevant. ' +
+    'If the question is about this software application (not Louisiana law), say so and ' +
+    'tell the user to file an enhancement request via the Help menu instead. ' +
+    'Always include a closing reminder: this is informational only, not legal advice.',
+
+  aiEndpoint: '/api/help',
+
+  aiDisclaimer:
+    'AI-generated. Informational only — not legal advice. ' +
+    'Verify against the official Louisiana Code of Civil Procedure ' +
+    'and consult an attorney for actual filings.',
+
+  storageKeys: { bugs: 'la-ccp:bugs', enhancements: 'la-ccp:enh' },
+
+  lookupPhone: (user) => user && user.phone && user.phone.length >= 7 ? user.phone : null,
+
+  persistPhone: (user, phone) => {
+    if (user) { user.phone = phone; }
+    const settings = DB.settings();
+    settings.phone = phone;
+    save('mc:settings', settings);
+  },
+
+  captureContext: () => ({
+    page: State.page,
+    caseNo: window.CURRENT_CASE_NO || null,
+    url: location.href,
+    build: APP_BUILD,
+    ts: new Date().toISOString()
+  }),
+
+  renderContextLine: (ctx) => {
+    if (!ctx) return null;
+    return '📍 ' + [
+      ctx.caseNo ? 'Case: ' + ctx.caseNo : null,
+      ctx.page   ? 'Page: ' + ctx.page   : null,
+      'Build: '  + (ctx.build || '?')
+    ].filter(Boolean).join(' · ');
+  }
+};
+</script>
+
+<!-- ── Help Mini ────────────────────────────────────────────────────── -->
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// UNIVERSAL HELP MINI — v2026-05-20
+// ─────────────────────────────────────────────────────────────────────────────
+(function(){
+'use strict';
+if (typeof HELP_CONFIG === 'undefined') {
+  console.error('Help mini: HELP_CONFIG not defined.');
+  return;
+}
+const CFG = HELP_CONFIG;
+const KEYS = {
+  bugs: (CFG.storageKeys && CFG.storageKeys.bugs) || ((CFG.appId||'app')+':bugs'),
+  enh:  (CFG.storageKeys && CFG.storageKeys.enhancements) || ((CFG.appId||'app')+':enh')
+};
+const AI_ENDPOINT = CFG.aiEndpoint || '/api/help';
+const KB = Array.isArray(CFG.kb) ? CFG.kb : [];
+
+const _load=(typeof load==='function')?load:function(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}};
+const _save=(typeof save==='function')?save:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+const _toast=(typeof toast==='function')?toast:function(m){console.log('[help]',m);};
+const _uid=(typeof uid==='function')?uid:function(){return Math.random().toString(36).slice(2,10);};
+const _el=(typeof el==='function')?el:function(tag,attrs){
+  const node=document.createElement(tag);
+  const kids=Array.prototype.slice.call(arguments,2);
+  if(attrs){for(const k in attrs){if(k==='onclick')node.onclick=attrs[k];else if(k==='for')node.setAttribute('for',attrs[k]);else if(k==='style'&&typeof attrs[k]==='object')Object.assign(node.style,attrs[k]);else node.setAttribute(k,attrs[k]);}}
+  kids.forEach(function(kid){if(kid==null)return;if(typeof kid==='string')node.appendChild(document.createTextNode(kid));else node.appendChild(kid);});
+  return node;
+};
+
+const HDB={
+  bugs:()=>_load(KEYS.bugs,[]),
+  setBugs:(v)=>_save(KEYS.bugs,v),
+  enhancements:()=>_load(KEYS.enh,[]),
+  setEnhancements:(v)=>_save(KEYS.enh,v)
+};
+
+function searchKB(query){
+  const q=(query||'').toLowerCase().trim();
+  if(!q||!KB.length)return[];
+  const tokens=q.split(/\s+/).filter(t=>t.length>=3);
+  if(!tokens.length)return[];
+  return KB.map(a=>{
+    const hay=(a.title+' '+(a.tags||[]).join(' ')+' '+a.body).toLowerCase();
+    let score=0;
+    for(const t of tokens){
+      if(hay.indexOf(t)>=0)score++;
+      if(a.title.toLowerCase().indexOf(t)>=0)score+=2;
+      if((a.tags||[]).some(tg=>tg.toLowerCase().indexOf(t)>=0))score+=1;
+    }
+    return{article:a,score};
+  }).filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,3).map(r=>r.article);
+}
+
+function showHelp(){
+  const bg=_el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});
+  const m=_el('div',{class:'modal',style:{maxWidth:'520px'}});
+  m.appendChild(_el('h3',{style:{marginBottom:'.7rem'}},'❓ Help'));
+  m.appendChild(_el('div',{style:{display:'grid',gridTemplateColumns:'1fr',gap:'.5rem'}},
+    _el('button',{class:'btn full',style:{textAlign:'left',padding:'.7rem',display:'flex',flexDirection:'column',alignItems:'flex-start',gap:'.15rem'},onclick:()=>{bg.remove();showHelpAsk();}},
+      _el('div',{style:{fontWeight:700}},'💬 Ask a question'),
+      _el('div',{style:{fontSize:'.82em',opacity:'.85'}},'How do I... / Why does... / What is...')),
+    _el('button',{class:'btn secondary full',style:{textAlign:'left',padding:'.7rem',display:'flex',flexDirection:'column',alignItems:'flex-start',gap:'.15rem'},onclick:()=>{bg.remove();showHelpBug();}},
+      _el('div',{style:{fontWeight:700}},'🐛 Report a bug'),
+      _el('div',{style:{fontSize:'.82em',opacity:'.85'}},"Something's broken or behaving wrong")),
+    _el('button',{class:'btn secondary full',style:{textAlign:'left',padding:'.7rem',display:'flex',flexDirection:'column',alignItems:'flex-start',gap:'.15rem'},onclick:()=>{bg.remove();showHelpEnhancement();}},
+      _el('div',{style:{fontWeight:700}},'✨ Request a feature'),
+      _el('div',{style:{fontSize:'.82em',opacity:'.85'}},'Idea for something new or improved'))
+  ));
+  m.appendChild(_el('div',{style:{height:'.5rem'}}));
+  m.appendChild(_el('button',{class:'btn ghost full',onclick:()=>bg.remove()},'Close'));
+  bg.appendChild(m);document.body.appendChild(bg);
+}
+
+function showHelpAsk(){
+  const bg=_el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});
+  const m=_el('div',{class:'modal',style:{maxWidth:'560px'}});
+  m.appendChild(_el('h3',{style:{marginBottom:'.2rem'}},'💬 Ask a question'));
+  m.appendChild(_el('small',{style:{display:'block',color:'var(--muted)',marginBottom:'.7rem'}},
+    KB.length?"Search our help articles. If nothing matches, we'll ask the AI assistant.":'Ask the AI assistant about Louisiana court procedures.'));
+  const inp=_el('textarea',{placeholder:CFG.askPlaceholder||'Type your question…',
+    style:{width:'100%',minHeight:'4.5rem',padding:'.5rem',fontSize:'1em',border:'1px solid var(--line)',borderRadius:'8px',boxSizing:'border-box',fontFamily:'inherit'}});
+  m.appendChild(inp);
+  const out=_el('div',{style:{marginTop:'.7rem',display:'none'}});
+  m.appendChild(out);
+  const errEl=_el('div',{style:{marginTop:'.7rem',padding:'.6rem',background:'#fae0e0',borderRadius:'8px',color:'var(--bad)',fontSize:'.85em',display:'none'}});
+  m.appendChild(errEl);
+  const btnRow=_el('div',{class:'btn-row',style:{marginTop:'.7rem'}});
+  const askBtn=_el('button',{class:'btn'},KB.length?'Search':'Ask');
+  btnRow.appendChild(askBtn);
+  btnRow.appendChild(_el('button',{class:'btn ghost',onclick:()=>bg.remove()},'Close'));
+  m.appendChild(btnRow);
+
+  askBtn.onclick=async function(){
+    const q=(inp.value||'').trim();
+    if(!q){_toast('Type a question first');return;}
+    out.style.display='none';errEl.style.display='none';out.innerHTML='';
+    const hits=KB.length?searchKB(q):[];
+    if(hits.length){
+      out.appendChild(_el('div',{style:{fontSize:'.8em',color:'var(--muted)',marginBottom:'.4rem',fontWeight:600}},'From help articles:'));
+      for(const a of hits){
+        const card=_el('div',{style:{padding:'.6rem .8rem',background:'var(--cream)',borderRadius:'8px',border:'1px solid var(--line)',marginBottom:'.5rem'}});
+        card.appendChild(_el('div',{style:{fontWeight:700,marginBottom:'.25rem'}},a.title));
+        card.appendChild(_el('div',{style:{fontSize:'.92em',lineHeight:'1.45'}},a.body));
+        out.appendChild(card);
+      }
+      out.appendChild(_el('button',{class:'btn ghost small',style:{marginTop:'.3rem'},onclick:async function(){this.disabled=true;this.textContent='Asking AI…';await askAI(q,out,errEl);this.remove();}},'Not what I needed — ask the AI'));
+      out.style.display='block';return;
+    }
+    askBtn.disabled=true;askBtn.textContent='Asking AI…';
+    if(KB.length)out.appendChild(_el('div',{style:{fontSize:'.8em',color:'var(--muted)',marginBottom:'.4rem',fontWeight:600}},'No help article matched. Asking AI:'));
+    out.style.display='block';
+    await askAI(q,out,errEl);
+    askBtn.disabled=false;askBtn.textContent=KB.length?'Search':'Ask';
+  };
+  bg.appendChild(m);document.body.appendChild(bg);
+  setTimeout(()=>{try{inp.focus();}catch(e){}},50);
+}
+
+async function askAI(question,container,errEl){
+  try{
+    const r=await fetch(AI_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question,systemPrompt:CFG.aiSystemPrompt||'You are a helpful assistant.'})});
+    if(!r.ok){let msg='Server returned '+r.status;if(r.status===404)msg='AI service not deployed yet ('+AI_ENDPOINT+')';throw new Error(msg);}
+    const data=await r.json();
+    const card=_el('div',{style:{padding:'.7rem',background:'#eef5ee',borderRadius:'8px',border:'1px solid var(--green)',fontSize:'.92em',lineHeight:'1.45',whiteSpace:'pre-wrap'}});
+    card.appendChild(_el('div',{style:{fontSize:'.78em',color:'var(--muted)',marginBottom:'.3rem',fontStyle:'italic'}},CFG.aiDisclaimer||'AI-generated.'));
+    card.appendChild(document.createTextNode((data.answer||'(no answer)').trim()));
+    container.appendChild(card);
+  }catch(e){errEl.textContent='AI error: '+(e.message||e);errEl.style.display='block';}
+}
+
+function showHelpBug(){
+  const bg=_el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});
+  const m=_el('div',{class:'modal',style:{maxWidth:'520px'}});
+  m.appendChild(_el('h3',{style:{marginBottom:'.7rem'}},'🐛 Report a bug'));
+  const me=(typeof State!=='undefined'&&State.user)?State.user:null;
+  const phoneOnFile=CFG.lookupPhone?CFG.lookupPhone(me):null;
+  const havePhone=phoneOnFile&&String(phoneOnFile).length>=7;
+  m.appendChild(_el('div',{style:{marginBottom:'.7rem'}},
+    _el('div',{style:{fontWeight:600,marginBottom:'.3rem'}},'Are you on the page where the bug is happening?'),
+    _el('small',{style:{color:'var(--muted)'}},"We'll capture the page context if yes.")));
+  const onPageInps=[];
+  const radioRow=_el('div',{style:{display:'flex',gap:'.6rem',marginBottom:'.7rem'}});
+  ['Yes, on the page','No, just describing it'].forEach((lbl,i)=>{
+    const id='bug-onpage-'+i;
+    const r=_el('input',{type:'radio',name:'bug-onpage',id,value:String(i===0)});
+    if(i===0)r.checked=true;
+    onPageInps.push(r);
+    radioRow.appendChild(_el('label',{'for':id,style:{display:'flex',alignItems:'center',gap:'.3rem',cursor:'pointer'}},r,_el('span',{},lbl)));
+  });
+  m.appendChild(radioRow);
+  m.appendChild(_el('div',{style:{fontWeight:600,marginBottom:'.3rem'}},'What happened? (the wrong behavior)'));
+  const behaviorInp=_el('textarea',{placeholder:'e.g. "Clicked Submit and got a blank screen"',style:{width:'100%',minHeight:'4rem',padding:'.5rem',fontSize:'1em',border:'1px solid var(--line)',borderRadius:'8px',boxSizing:'border-box',fontFamily:'inherit',marginBottom:'.7rem'}});
+  m.appendChild(behaviorInp);
+  m.appendChild(_el('div',{style:{fontWeight:600,marginBottom:'.3rem'}},'What did you expect to happen?'));
+  const expectedInp=_el('textarea',{placeholder:'e.g. "Filing should have saved and shown confirmation"',style:{width:'100%',minHeight:'3.5rem',padding:'.5rem',fontSize:'1em',border:'1px solid var(--line)',borderRadius:'8px',boxSizing:'border-box',fontFamily:'inherit',marginBottom:'.7rem'}});
+  m.appendChild(expectedInp);
+  let phoneInp=null;
+  if(!havePhone){
+    m.appendChild(_el('div',{style:{fontWeight:600,marginBottom:'.3rem'}},'Cell number for status updates'));
+    m.appendChild(_el('small',{style:{display:'block',color:'var(--muted)',marginBottom:'.3rem'}},"We'll text when we're researching, and again when a fix ships."));
+    phoneInp=_el('input',{type:'tel',placeholder:'(318) 555-1234',style:{width:'100%',padding:'.5rem',fontSize:'1em',border:'1px solid var(--line)',borderRadius:'8px',boxSizing:'border-box',marginBottom:'.7rem'}});
+    m.appendChild(phoneInp);
+  }else{
+    m.appendChild(_el('small',{style:{display:'block',color:'var(--muted)',marginBottom:'.7rem'}},'We have your number on file ('+phoneOnFile+"). We'll text status updates."));
+  }
+  const errEl=_el('div',{style:{padding:'.5rem',background:'#fae0e0',borderRadius:'8px',color:'var(--bad)',fontSize:'.85em',display:'none',marginBottom:'.5rem'}});
+  m.appendChild(errEl);
+  const btnRow=_el('div',{class:'btn-row'});
+  const submitBtn=_el('button',{class:'btn'},'Submit bug report');
+  btnRow.appendChild(submitBtn);
+  btnRow.appendChild(_el('button',{class:'btn ghost',onclick:()=>bg.remove()},'Cancel'));
+  m.appendChild(btnRow);
+  submitBtn.onclick=function(){
+    const behavior=(behaviorInp.value||'').trim();
+    if(!behavior){errEl.textContent='Please describe what happened.';errEl.style.display='block';return;}
+    const phone=phoneInp?(phoneInp.value||'').trim():phoneOnFile;
+    if(!phone||String(phone).length<7){errEl.textContent='Cell number required for status updates.';errEl.style.display='block';return;}
+    const onPage=onPageInps[0].checked;
+    const ctx=onPage&&CFG.captureContext?CFG.captureContext():null;
+    const bug={id:'bug-'+_uid(),reporterUserId:me?me.id:null,reporterName:me?me.name:'unknown',phone,
+      behavior,expected:(expectedInp.value||'').trim(),context:ctx,status:'reported',createdAt:new Date().toISOString()};
+    const all=HDB.bugs();all.push(bug);HDB.setBugs(all);
+    if(phoneInp&&CFG.persistPhone){try{CFG.persistPhone(me,phone);}catch(e){}}
+    bg.remove();showHelpAck('bug',bug);
+    updateHelpBadge();
+  };
+  bg.appendChild(m);document.body.appendChild(bg);
+}
+
+function showHelpEnhancement(){
+  const bg=_el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});
+  const m=_el('div',{class:'modal',style:{maxWidth:'520px'}});
+  m.appendChild(_el('h3',{style:{marginBottom:'.7rem'}},'✨ Request a feature'));
+  const me=(typeof State!=='undefined'&&State.user)?State.user:null;
+  const phoneOnFile=CFG.lookupPhone?CFG.lookupPhone(me):null;
+  const havePhone=phoneOnFile&&String(phoneOnFile).length>=7;
+  m.appendChild(_el('div',{style:{fontWeight:600,marginBottom:'.3rem'}},'What would you like the app to do?'));
+  const ideaInp=_el('textarea',{placeholder:'e.g. "Auto-fill party address from case record"',style:{width:'100%',minHeight:'4rem',padding:'.5rem',fontSize:'1em',border:'1px solid var(--line)',borderRadius:'8px',boxSizing:'border-box',fontFamily:'inherit',marginBottom:'.7rem'}});
+  m.appendChild(ideaInp);
+  m.appendChild(_el('div',{style:{fontWeight:600,marginBottom:'.3rem'}},"What's the use case?"));
+  m.appendChild(_el('small',{style:{display:'block',color:'var(--muted)',marginBottom:'.3rem'}},'When/why would you use it?'));
+  const useCaseInp=_el('textarea',{placeholder:"e.g. \"When filing service returns, I have to re-type the address that's already on the case\"",style:{width:'100%',minHeight:'3.5rem',padding:'.5rem',fontSize:'1em',border:'1px solid var(--line)',borderRadius:'8px',boxSizing:'border-box',fontFamily:'inherit',marginBottom:'.7rem'}});
+  m.appendChild(useCaseInp);
+  m.appendChild(_el('div',{style:{fontWeight:600,marginBottom:'.3rem'}},'Priority for you'));
+  const priSel=_el('select',{style:{width:'100%',padding:'.5rem',fontSize:'1em',border:'1px solid var(--line)',borderRadius:'8px',marginBottom:'.7rem'}},
+    _el('option',{value:'low'},'Low — nice to have'),
+    _el('option',{value:'medium',selected:'selected'},'Medium — would use it regularly'),
+    _el('option',{value:'high'},'High — blocks something I need'));
+  m.appendChild(priSel);
+  let phoneInp=null;
+  if(!havePhone){
+    m.appendChild(_el('div',{style:{fontWeight:600,marginBottom:'.3rem'}},'Cell number for status updates'));
+    phoneInp=_el('input',{type:'tel',placeholder:'(318) 555-1234',style:{width:'100%',padding:'.5rem',fontSize:'1em',border:'1px solid var(--line)',borderRadius:'8px',boxSizing:'border-box',marginBottom:'.7rem'}});
+    m.appendChild(phoneInp);
+  }
+  const similarBox=_el('div',{style:{display:'none',padding:'.5rem .7rem',background:'#fff8e0',border:'1px solid #d4af3a',borderRadius:'8px',fontSize:'.85em',marginBottom:'.7rem'}});
+  m.appendChild(similarBox);
+  ideaInp.addEventListener('input',function(){
+    const q=(ideaInp.value||'').toLowerCase().trim();
+    if(q.length<6){similarBox.style.display='none';return;}
+    const hits=HDB.enhancements().filter(e=>{
+      const hay=(e.idea+' '+(e.useCase||'')).toLowerCase();
+      const tokens=q.split(/\s+/).filter(t=>t.length>=4);
+      return tokens.length>=2&&tokens.filter(t=>hay.indexOf(t)>=0).length>=2;
+    }).slice(0,3);
+    if(hits.length){
+      similarBox.innerHTML='';
+      similarBox.appendChild(_el('div',{style:{fontWeight:700,marginBottom:'.3rem'}},'⚠ Similar request'+(hits.length>1?'s':'')+' already in the queue:'));
+      for(const h of hits)similarBox.appendChild(_el('div',{style:{padding:'.2rem 0',fontStyle:'italic'}},'"'+h.idea+'"'+(h.priority?' ('+h.priority+')':'')));
+      similarBox.appendChild(_el('div',{style:{marginTop:'.3rem',color:'var(--muted)'}},'Continue if your use case is different, or close if duplicate.'));
+      similarBox.style.display='block';
+    }else{similarBox.style.display='none';}
+  });
+  const errEl=_el('div',{style:{padding:'.5rem',background:'#fae0e0',borderRadius:'8px',color:'var(--bad)',fontSize:'.85em',display:'none',marginBottom:'.5rem'}});
+  m.appendChild(errEl);
+  const btnRow=_el('div',{class:'btn-row'});
+  const submitBtn=_el('button',{class:'btn'},'Submit request');
+  btnRow.appendChild(submitBtn);
+  btnRow.appendChild(_el('button',{class:'btn ghost',onclick:()=>bg.remove()},'Cancel'));
+  m.appendChild(btnRow);
+  submitBtn.onclick=function(){
+    const idea=(ideaInp.value||'').trim();
+    const useCase=(useCaseInp.value||'').trim();
+    if(!idea){errEl.textContent='Please describe the feature.';errEl.style.display='block';return;}
+    if(!useCase){errEl.textContent='Please describe the use case.';errEl.style.display='block';return;}
+    const phone=phoneInp?(phoneInp.value||'').trim():phoneOnFile;
+    if(!phone||String(phone).length<7){errEl.textContent='Cell number required for status updates.';errEl.style.display='block';return;}
+    const enh={id:'enh-'+_uid(),reporterUserId:me?me.id:null,reporterName:me?me.name:'unknown',
+      phone,idea,useCase,priority:priSel.value,build:CFG.appBuild||'?',status:'reported',createdAt:new Date().toISOString()};
+    const all=HDB.enhancements();all.push(enh);HDB.setEnhancements(all);
+    if(phoneInp&&CFG.persistPhone){try{CFG.persistPhone(me,phone);}catch(e){}}
+    bg.remove();showHelpAck('enhancement',enh);
+    updateHelpBadge();
+  };
+  bg.appendChild(m);document.body.appendChild(bg);
+}
+
+function showHelpAck(kind,record){
+  const bg=_el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});
+  const m=_el('div',{class:'modal',style:{maxWidth:'440px',textAlign:'center'}});
+  m.appendChild(_el('div',{style:{fontSize:'2.4em',marginBottom:'.3rem'}},'✅'));
+  m.appendChild(_el('h3',{style:{marginBottom:'.5rem'}},kind==='bug'?'Bug reported':'Request submitted'));
+  const lines=kind==='bug'?['Status: 🔍 Researching',"We'll text "+record.phone+' when:','• Investigation begins','• Fix is in the next release']:['Status: 🔍 Researching',"We'll review for conflicts with similar requests and text "+record.phone+' with:','• Any conflicts found','• Estimated release date'];
+  const list=_el('div',{style:{textAlign:'left',padding:'.7rem 1rem',background:'var(--cream)',borderRadius:'8px',marginBottom:'.7rem',fontSize:'.92em',lineHeight:'1.7'}});
+  for(const ln of lines)list.appendChild(_el('div',{},ln));
+  m.appendChild(list);
+  m.appendChild(_el('small',{style:{display:'block',color:'var(--muted)',marginBottom:'.7rem'}},'Reference ID: '+record.id));
+  m.appendChild(_el('button',{class:'btn full',onclick:()=>bg.remove()},'Got it'));
+  bg.appendChild(m);document.body.appendChild(bg);
+}
+
+function HelpQueuePage(){
+  const root=_el('div');
+  const titleRow=_el('div',{class:'row between',style:{alignItems:'center',marginBottom:'.3rem'}});
+  titleRow.appendChild(_el('h1',{style:{margin:0,fontFamily:"'DM Serif Display',serif",fontWeight:400,fontSize:'1.75rem'}},'❓ Help Queue'));
+  titleRow.appendChild(_el('button',{class:'btn small',onclick:()=>showExportHelpReports()},'📤 Export'));
+  root.appendChild(titleRow);
+  root.appendChild(_el('small',{style:{display:'block',color:'var(--muted)',marginBottom:'1rem'}},'User-submitted bug reports and feature requests. Use Export to hand the queue to the dev.'));
+  const tabBar=_el('div',{class:'tab-bar'});
+  const panels={};
+  const tabs=[{key:'bugs',label:'🐛 Bugs ('+HDB.bugs().length+')'},{key:'enh',label:'✨ Enhancements ('+HDB.enhancements().length+')'}];
+  let active='bugs';
+  const drawTabs=()=>{tabBar.innerHTML='';for(const t of tabs)tabBar.appendChild(_el('button',{class:'tab'+(t.key===active?' active':''),onclick:()=>{active=t.key;drawTabs();drawPanels();}},t.label));};
+  panels.bugs=_el('div',{style:{display:'block'}});
+  panels.enh=_el('div',{style:{display:'none'}});
+  const drawPanels=()=>{panels.bugs.style.display=active==='bugs'?'block':'none';panels.enh.style.display=active==='enh'?'block':'none';};
+  drawTabs();root.appendChild(tabBar);
+  const buildBugs=()=>{
+    panels.bugs.innerHTML='';
+    const bugs=HDB.bugs().slice().reverse();
+    if(!bugs.length){panels.bugs.appendChild(_el('div',{class:'empty card'},'No bug reports yet.'));return;}
+    for(const b of bugs){
+      const card=_el('div',{class:'card',style:{marginBottom:'.6rem'}});
+      card.appendChild(_el('div',{class:'row between',style:{marginBottom:'.3rem'}},
+        _el('div',{},_el('span',{class:'pill '+(b.status==='reported'?'warn':'good')},b.status||'reported'),
+          _el('span',{style:{marginLeft:'.5rem',fontWeight:600}},b.reporterName||'unknown'),
+          _el('span',{style:{marginLeft:'.4rem',fontSize:'.8em',color:'var(--muted)'}},b.phone||'')),
+        _el('span',{style:{fontSize:'.78em',color:'var(--muted)'}},(b.createdAt||'').slice(0,16).replace('T',' '))));
+      card.appendChild(_el('div',{style:{marginBottom:'.3rem'}},_el('strong',{},'Wrong: '),_el('span',{},b.behavior)));
+      if(b.expected)card.appendChild(_el('div',{style:{marginBottom:'.3rem'}},_el('strong',{},'Expected: '),_el('span',{},b.expected)));
+      if(b.context){const ctxLine=CFG.renderContextLine?CFG.renderContextLine(b.context):null;if(ctxLine)card.appendChild(_el('small',{style:{color:'var(--muted)',display:'block',marginBottom:'.4rem'}},ctxLine));}
+      const btns=_el('div',{class:'btn-row'});
+      for(const s of ['reported','researching','queued','resolved','wontfix']){if(s===b.status)continue;btns.appendChild(_el('button',{class:'btn small ghost',onclick:()=>{const all=HDB.bugs();const rec=all.find(x=>x.id===b.id);if(rec){rec.status=s;HDB.setBugs(all);buildBugs();drawTabs();}}},'→ '+s));}
+      btns.appendChild(_el('button',{class:'btn small ghost',style:{color:'var(--bad)'},onclick:()=>{if(!confirm('Delete this bug report?'))return;HDB.setBugs(HDB.bugs().filter(x=>x.id!==b.id));buildBugs();drawTabs();updateHelpBadge();}},'Delete'));
+      card.appendChild(btns);panels.bugs.appendChild(card);
+    }
+  };
+  const buildEnhs=()=>{
+    panels.enh.innerHTML='';
+    const enhs=HDB.enhancements().slice().reverse();
+    if(!enhs.length){panels.enh.appendChild(_el('div',{class:'empty card'},'No enhancement requests yet.'));return;}
+    for(const e of enhs){
+      const card=_el('div',{class:'card',style:{marginBottom:'.6rem'}});
+      const priColor=e.priority==='high'?'var(--bad)':(e.priority==='low'?'var(--muted)':'var(--ink)');
+      card.appendChild(_el('div',{class:'row between',style:{marginBottom:'.3rem'}},
+        _el('div',{},_el('span',{class:'pill '+(e.status==='reported'?'warn':'good')},e.status||'reported'),
+          _el('span',{style:{marginLeft:'.5rem',fontWeight:600}},e.reporterName||'unknown'),
+          _el('span',{style:{marginLeft:'.4rem',fontSize:'.8em',color:'var(--muted)'}},e.phone||''),
+          _el('span',{style:{marginLeft:'.5rem',fontSize:'.85em',color:priColor,fontWeight:600}},'priority: '+(e.priority||'medium'))),
+        _el('span',{style:{fontSize:'.78em',color:'var(--muted)'}},(e.createdAt||'').slice(0,16).replace('T',' '))));
+      card.appendChild(_el('div',{style:{marginBottom:'.3rem'}},_el('strong',{},'Idea: '),_el('span',{},e.idea)));
+      if(e.useCase)card.appendChild(_el('div',{style:{marginBottom:'.3rem',fontStyle:'italic',color:'var(--muted)'}},'Use case: '+e.useCase));
+      const btns=_el('div',{class:'btn-row'});
+      for(const s of ['reported','researching','planned','released','declined']){if(s===e.status)continue;btns.appendChild(_el('button',{class:'btn small ghost',onclick:()=>{const all=HDB.enhancements();const rec=all.find(x=>x.id===e.id);if(rec){rec.status=s;HDB.setEnhancements(all);buildEnhs();drawTabs();}}},'→ '+s));}
+      btns.appendChild(_el('button',{class:'btn small ghost',style:{color:'var(--bad)'},onclick:()=>{if(!confirm('Delete this enhancement request?'))return;HDB.setEnhancements(HDB.enhancements().filter(x=>x.id!==e.id));buildEnhs();drawTabs();updateHelpBadge();}},'Delete'));
+      card.appendChild(btns);panels.enh.appendChild(card);
+    }
+  };
+  buildBugs();buildEnhs();
+  root.appendChild(panels.bugs);root.appendChild(panels.enh);
+  return root;
+}
+
+function showExportHelpReports(){
+  const bugs=HDB.bugs();const enhs=HDB.enhancements();
+  const me=(typeof State!=='undefined'&&State.user)?State.user:null;
+  const payload={app:CFG.appId||'unknown',appName:CFG.appName||'',build:CFG.appBuild||'?',
+    exportedAt:new Date().toISOString(),exporter:me?{userId:me.id,name:me.name}:{userId:null,name:'unknown'},
+    counts:{bugs:bugs.length,enhancements:enhs.length},bugs,enhancements:enhs};
+  const json=JSON.stringify(payload,null,2);
+  const fname=(CFG.appId||'help')+'-'+(new Date().toISOString().slice(0,10))+'.json';
+  const bg=_el('div',{class:'modal-bg',onclick:e=>{if(e.target===bg)bg.remove();}});
+  const m=_el('div',{class:'modal',style:{maxWidth:'560px'}});
+  m.appendChild(_el('h3',{style:{marginBottom:'.3rem'}},'📤 Export Help Reports'));
+  m.appendChild(_el('small',{style:{display:'block',color:'var(--muted)',marginBottom:'.7rem'}},bugs.length+' bug'+(bugs.length===1?'':'s')+' and '+enhs.length+' enhancement'+(enhs.length===1?'':'s')+'. Hand this file (or paste this JSON) to the dev to triage.'));
+  const ta=_el('textarea',{readonly:true,style:{width:'100%',minHeight:'9rem',padding:'.5rem',fontSize:'.78em',fontFamily:'monospace',border:'1px solid var(--line)',borderRadius:'8px',boxSizing:'border-box',resize:'vertical'}});
+  ta.value=json;m.appendChild(ta);
+  const status=_el('div',{style:{fontSize:'.82em',color:'var(--muted)',minHeight:'1.2em',marginTop:'.4rem'}});
+  m.appendChild(status);
+  const btnRow=_el('div',{class:'btn-row',style:{marginTop:'.7rem',flexWrap:'wrap'}});
+  btnRow.appendChild(_el('button',{class:'btn',onclick:function(){try{const blob=new Blob([json],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},100);status.textContent='Download started: '+fname;}catch(e){status.textContent='Download failed — try Copy. ('+(e.message||e)+')';}}},'💾 Download'));
+  btnRow.appendChild(_el('button',{class:'btn',onclick:async function(){try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(json);status.textContent='Copied. Paste into email or chat.';}else{ta.focus();ta.select();document.execCommand('copy');status.textContent='Copied (legacy). Paste into email or chat.';}}catch(e){status.textContent='Copy failed — long-press the JSON above and Select All.';}}},'📋 Copy JSON'));
+  btnRow.appendChild(_el('button',{class:'btn ghost',onclick:function(){const subj=(CFG.appName||CFG.appId||'Help')+' reports — '+payload.exportedAt.slice(0,10);const safe=json.length<1800?json:'(JSON too large for mailto, use Copy or Download instead)';const href='mailto:?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(safe);try{location.href=href;}catch(e){status.textContent='Email failed.';} }},'✉ Email'));
+  btnRow.appendChild(_el('button',{class:'btn ghost',onclick:()=>bg.remove()},'Close'));
+  m.appendChild(btnRow);bg.appendChild(m);document.body.appendChild(bg);
+}
+
+window.showHelp=showHelp;
+window.HelpQueuePage=HelpQueuePage;
+window.showExportHelpReports=showExportHelpReports;
+window._helpInternal={showHelpAsk,showHelpBug,showHelpEnhancement,showHelpAck,HDB,searchKB,CFG};
+})();
+</script>
+
+<!-- ── App Logic ────────────────────────────────────────────────────── -->
+<script>
+// ── Navigation ─────────────────────────────────────────────────────────
+function navigate(page) {
+  // Set CURRENT_CASE_NO context for bug capture
+  window.CURRENT_CASE_NO = null;
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.add('active');
+
+  const navEl = document.getElementById('nav-' + page);
+  if (navEl) navEl.classList.add('active');
+
+  State.page = page;
+
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'cases') renderCaseTable();
+  if (page === 'service') renderPendingService();
+  if (page === 'helpqueue') {
+    const mount = document.getElementById('helpqueue-mount');
+    mount.innerHTML = '';
+    mount.appendChild(HelpQueuePage());
+  }
+  if (page === 'settings') loadSettings();
+}
+
+function render() { navigate(State.page); }
+
+// ── Case number generator ──────────────────────────────────────────────
+function genCaseNo() {
+  const yr = new Date().getFullYear();
+  const cases = DB.cases();
+  const n = String(cases.length + 1).padStart(5, '0');
+  return yr + '-CV-' + n;
+}
+
+// ── Submit filing ──────────────────────────────────────────────────────
+function submitFiling() {
+  const type = document.getElementById('f-type').value;
+  const plaintiff = document.getElementById('f-plaintiff').value.trim();
+  const plaintiffAddr = document.getElementById('f-plaintiff-addr').value.trim();
+  const defendant = document.getElementById('f-defendant').value.trim();
+  const defendantAddr = document.getElementById('f-defendant-addr').value.trim();
+  const desc = document.getElementById('f-desc').value.trim();
+  const amount = document.getElementById('f-amount').value.trim();
+  const errEl = document.getElementById('filing-error');
+
+  if (!type || !plaintiff || !defendant) {
+    errEl.textContent = 'Case type, plaintiff, and defendant are required.';
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+
+  const caseNo = genCaseNo();
+  const caseRec = {
+    id: 'c-' + uid(),
+    caseNo,
+    type,
+    plaintiff, plaintiffAddr,
+    defendant, defendantAddr,
+    description: desc,
+    amount,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    serviceReturns: []
+  };
+
+  const all = DB.cases(); all.push(caseRec); DB.setCases(all);
+  toast('Filed! Case No. ' + caseNo);
+
+  // Clear form
+  ['f-type','f-plaintiff','f-plaintiff-addr','f-defendant','f-defendant-addr','f-desc','f-amount'].forEach(id => {
+    const el2 = document.getElementById(id);
+    if (el2) el2.value = '';
+  });
+
+  updateBadges();
+  navigate('cases');
+}
+
+// ── Case table ─────────────────────────────────────────────────────────
+function renderCaseTable() {
+  const search = (document.getElementById('case-search').value || '').toLowerCase();
+  const statusFilter = document.getElementById('case-status-filter').value;
+  let cases = DB.cases().slice().reverse();
+
+  if (search) {
+    cases = cases.filter(c =>
+      c.caseNo.toLowerCase().includes(search) ||
+      c.plaintiff.toLowerCase().includes(search) ||
+      c.defendant.toLowerCase().includes(search)
+    );
+  }
+  if (statusFilter) {
+    cases = cases.filter(c => c.status === statusFilter);
+  }
+
+  const tbody = document.getElementById('case-tbody');
+  tbody.innerHTML = '';
+  if (!cases.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">No cases found.</td></tr>';
+    return;
+  }
+
+  const typeLabels = {
+    eviction:'Eviction', smallclaims:'Small Claims', injunction:'Injunction',
+    contempt:'Contempt', other:'Other Civil'
+  };
+  const statusPill = {
+    active:'pill warn', served:'pill info', closed:'pill good'
+  };
+
+  for (const c of cases) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="case-no">${c.caseNo}</span></td>
+      <td>${typeLabels[c.type] || c.type}</td>
+      <td>${c.plaintiff}</td>
+      <td>${c.defendant}</td>
+      <td style="font-size:.82em;color:var(--muted)">${c.createdAt.slice(0,10)}</td>
+      <td><span class="${statusPill[c.status]||'pill'}">${c.status}</span></td>
+      <td>
+        <button class="btn ghost small" onclick="openCase('${c.id}')">View</button>
+      </td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function openCase(id) {
+  const c = DB.cases().find(x => x.id === id);
+  if (!c) return;
+  window.CURRENT_CASE_NO = c.caseNo;
+
+  const bg = el('div', {class:'modal-bg', onclick: e => { if (e.target === bg) bg.remove(); window.CURRENT_CASE_NO = null; }});
+  const m = el('div', {class:'modal', style:{maxWidth:'560px'}});
+  m.appendChild(el('div', {class:'row between', style:{marginBottom:'.8rem'}},
+    el('div', {},
+      el('div', {style:{fontFamily:"'DM Serif Display',serif",fontSize:'1.2rem'}}, c.caseNo),
+      el('small', {style:{color:'var(--muted)'}}, c.plaintiff + ' v. ' + c.defendant)
+    ),
+    el('span', {class:'pill '+(c.status==='active'?'warn':c.status==='served'?'info':'good')}, c.status)
+  ));
+
+  const rows = [
+    ['Type', ({eviction:'Eviction',smallclaims:'Small Claims',injunction:'Injunction',contempt:'Contempt',other:'Other Civil'})[c.type]||c.type],
+    ['Plaintiff', c.plaintiff + (c.plaintiffAddr ? ' — ' + c.plaintiffAddr : '')],
+    ['Defendant', c.defendant + (c.defendantAddr ? ' — ' + c.defendantAddr : '')],
+    ['Filed', c.createdAt.slice(0,16).replace('T',' ')],
+    c.amount ? ['Amount', c.amount] : null,
+    c.description ? ['Description', c.description] : null
+  ].filter(Boolean);
+
+  for (const [label, val] of rows) {
+    m.appendChild(el('div', {style:{display:'flex',gap:'.5rem',marginBottom:'.4rem',fontSize:'.9em'}},
+      el('span', {style:{color:'var(--muted)',minWidth:'90px',flexShrink:0}}, label + ':'),
+      el('span', {}, val)
+    ));
+  }
+
+  const btns = el('div', {class:'btn-row', style:{marginTop:'1rem'}});
+  if (c.status !== 'closed') {
+    btns.appendChild(el('button', {class:'btn ghost small', onclick: () => {
+      const all = DB.cases(); const rec = all.find(x => x.id === c.id);
+      if (rec) { rec.status = 'closed'; DB.setCases(all); bg.remove(); window.CURRENT_CASE_NO = null; navigate('cases'); toast('Case closed.'); updateBadges(); }
+    }}, 'Close Case'));
+  }
+  btns.appendChild(el('button', {class:'btn ghost small', onclick: () => { bg.remove(); window.CURRENT_CASE_NO = null; }}, 'Done'));
+  m.appendChild(btns);
+  bg.appendChild(m); document.body.appendChild(bg);
+}
+
+// ── Service returns ────────────────────────────────────────────────────
+function autofillCaseFromService() {
+  const val = (document.getElementById('s-caseno').value || '').trim().toUpperCase();
+  const preview = document.getElementById('s-case-preview');
+  const c = DB.cases().find(x => x.caseNo.toUpperCase() === val);
+  if (c) {
+    preview.innerHTML = '';
+    preview.appendChild(document.createTextNode(c.plaintiff + ' v. ' + c.defendant));
+    preview.style.display = 'block';
+    if (!document.getElementById('s-served-to').value) {
+      document.getElementById('s-served-to').value = c.defendant;
+    }
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+function submitServiceReturn() {
+  const caseNo = (document.getElementById('s-caseno').value || '').trim();
+  const servedTo = (document.getElementById('s-served-to').value || '').trim();
+  const method = document.getElementById('s-method').value;
+  const date = document.getElementById('s-date').value;
+  const server = (document.getElementById('s-server').value || '').trim();
+  const errEl = document.getElementById('service-error');
+
+  if (!caseNo || !servedTo || !date) {
+    errEl.textContent = 'Case number, served-to, and date are required.';
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+
+  const sr = {
+    id: 'sr-' + uid(),
+    caseNo, servedTo, method, date, server,
+    loggedAt: new Date().toISOString()
+  };
+
+  // Save to service returns
+  const all = DB.serviceReturns(); all.push(sr); DB.setServiceReturns(all);
+
+  // Update case status
+  const cases = DB.cases();
+  const c = cases.find(x => x.caseNo === caseNo);
+  if (c) { c.status = 'served'; DB.setCases(cases); }
+
+  toast('Service return logged for ' + caseNo);
+  clearServiceForm();
+  renderPendingService();
+  updateBadges();
+}
+
+function clearServiceForm() {
+  ['s-caseno','s-served-to','s-date','s-server'].forEach(id => {
+    const el2 = document.getElementById(id);
+    if (el2) el2.value = '';
+  });
+  document.getElementById('s-method').value = 'personal';
+  document.getElementById('s-case-preview').style.display = 'none';
+  document.getElementById('service-error').style.display = 'none';
+}
+
+function renderPendingService() {
+  const list = document.getElementById('pending-service-list');
+  if (!list) return;
+  const pending = DB.cases().filter(c => c.status === 'active').slice().reverse();
+  list.innerHTML = '';
+  if (!pending.length) {
+    list.innerHTML = '<div class="empty">No cases pending service.</div>';
+    return;
+  }
+  for (const c of pending) {
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:.55rem 0;border-bottom:1px solid var(--line);font-size:.88em';
+    item.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="case-no">${c.caseNo}</span>
+        <span style="font-size:.8em;color:var(--muted)">${c.createdAt.slice(0,10)}</span>
+      </div>
+      <div style="color:var(--muted);font-size:.85em">${c.plaintiff} v. ${c.defendant}</div>`;
+    list.appendChild(item);
+  }
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────
+function renderDashboard() {
+  const cases = DB.cases();
+  document.getElementById('stat-active').textContent =
+    cases.filter(c => c.status === 'active').length;
+  const now = new Date();
+  document.getElementById('stat-month').textContent =
+    cases.filter(c => {
+      const d = new Date(c.createdAt);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+  document.getElementById('stat-service').textContent =
+    cases.filter(c => c.status === 'active').length;
+  document.getElementById('dashDate').textContent =
+    now.toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+  // Recent activity
+  const activity = document.getElementById('recent-activity');
+  activity.innerHTML = '';
+  const recent = cases.slice(-5).reverse();
+  if (!recent.length) {
+    activity.innerHTML = '<div class="empty">No activity yet. File your first case.</div>';
+    return;
+  }
+  for (const c of recent) {
+    const item = document.createElement('div');
+    item.className = 'activity-item';
+    const dotClass = c.status === 'active' ? 'green' : c.status === 'served' ? 'gold' : 'muted';
+    item.innerHTML = `
+      <div class="activity-dot ${dotClass}"></div>
+      <div class="activity-text">
+        <strong>${c.caseNo}</strong> — ${c.plaintiff} v. ${c.defendant}
+        <div style="font-size:.8em;color:var(--muted)">${c.type} · ${c.status}</div>
+      </div>
+      <div class="activity-time">${c.createdAt.slice(5,10)}</div>`;
+    activity.appendChild(item);
+  }
+}
+
+// ── Badges ─────────────────────────────────────────────────────────────
+function updateBadges() {
+  const cases = DB.cases();
+  const badgeCases = document.getElementById('badge-cases');
+  badgeCases.textContent = cases.filter(c => c.status === 'active').length;
+  updateHelpBadge();
+}
+
+function updateHelpBadge() {
+  const total = (load('la-ccp:bugs', []).length) + (load('la-ccp:enh', []).length);
+  const badge = document.getElementById('badge-help');
+  if (total > 0) {
+    badge.textContent = total;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ── Settings ────────────────────────────────────────────────────────────
+function loadSettings() {
+  const s = DB.settings();
+  document.getElementById('settings-name').value = s.name || '';
+  document.getElementById('settings-phone').value = s.phone || '';
+  document.getElementById('settings-role').value = s.role || 'clerk';
+  document.getElementById('userName').textContent = s.name || 'Clerk';
+  const initials = (s.name || 'CK').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('avatarInitials').textContent = initials;
+}
+
+function saveSettings() {
+  const name = document.getElementById('settings-name').value.trim() || 'Court Clerk';
+  const phone = document.getElementById('settings-phone').value.trim();
+  const role = document.getElementById('settings-role').value;
+  const s = { name, phone, role };
+  save('mc:settings', s);
+  State.user.name = name;
+  State.user.phone = phone;
+  document.getElementById('userName').textContent = name;
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('avatarInitials').textContent = initials;
+  toast('Settings saved.');
+}
+
+function clearAllData() {
+  if (!confirm('Clear ALL app data? This cannot be undone.')) return;
+  ['mc:cases','mc:service','mc:settings','la-ccp:bugs','la-ccp:enh'].forEach(k => localStorage.removeItem(k));
+  toast('All data cleared.');
+  navigate('dashboard');
+  updateBadges();
+}
+
+// ── Set today's date default on service form ────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const dateEl = document.getElementById('s-date');
+  if (dateEl) dateEl.value = new Date().toISOString().slice(0,10);
+});
+
+// ── Boot ───────────────────────────────────────────────────────────────
+(function boot() {
+  // Load saved user settings
+  const s = DB.settings();
+  State.user.name = s.name || 'Court Clerk';
+  State.user.phone = s.phone || '';
+  document.getElementById('userName').textContent = State.user.name;
+  const initials = State.user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('avatarInitials').textContent = initials;
+
+  // Set today's date default
+  const dateEl = document.getElementById('s-date');
+  if (dateEl) dateEl.value = new Date().toISOString().slice(0,10);
+
+  updateBadges();
+  renderDashboard();
+})();
+</script>
+</body>
+</html>
